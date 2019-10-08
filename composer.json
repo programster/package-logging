@@ -1,0 +1,23 @@
+{
+    "name": "programster/log",
+    "description": "A library of loggers that comply with PSR-3",
+    "keywords": ["log", "logging"],
+    "homepage": "https://github.com/programster/package-logging",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Stuart Page",
+            "homepage": "https://blog.programster.org"
+        }
+    ],
+    "require": {
+        "php": ">=7.2.0",
+        "psr/log": "^1.1",
+        "ramsey/uuid": "^3.8"
+    },
+    "autoload": {
+        "psr-4": {
+            "Programster\\Log\\": "src/"
+        }
+    }
+}
