@@ -1,4 +1,5 @@
 <?php
+
 /*
  * This class is a logger which logs to a PostgreSQL database connection.
  * Requires a database table with at LEAST the following fields
@@ -6,10 +7,12 @@
  *  - priority - (int)
  *  - context - (full text for json)
  */
+
+declare(strict_types = 1);
 namespace Programster\Log;
 
 
-class PgSqlLogger extends \Psr\Log\AbstractLogger
+class PgSqlLogger extends AbstractLogger
 {
     protected $m_connection;
     protected $m_logTable;
@@ -79,11 +82,7 @@ class PgSqlLogger extends \Psr\Log\AbstractLogger
      */
     public function log($level, $message, array $context = array())
     {
-        if (!in_array($level, ['emergency', 'alert', 'critical', 'error', 'warning', 'notice', 'info', 'debug']))
-        {
-            throw new \Exception("Invalid log level: " . $level);
-        }
-
+        $this->validateLogLevel($level);
         $contextString = json_encode($context, JSON_UNESCAPED_SLASHES);
 
         $params = array(

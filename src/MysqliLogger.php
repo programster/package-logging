@@ -1,4 +1,5 @@
 <?php
+
 /*
  * This class is a logger which logs to a mysqli database connection.
  * Requires a database table with at LEAST the following fields
@@ -7,21 +8,20 @@
  *  - context - (full text for json)
  */
 
+declare(strict_types = 1);
 namespace Programster\Log;
 
 
-class MysqliLogger extends \Psr\Log\AbstractLogger
+class MysqliLogger extends AbstractLogger
 {
     protected $m_connection;
     protected $m_logTable;
-    protected $m_minLogLevel = 0;
 
 
     /**
      * Creates a database logger using the provided mysqli connection and table
-     * @param mysqli $connection - a connected mysqli instance that we can log to
-     * @param type $table - the name of the table that will store the logs
-     * @return void - (constructor)
+     * @param mysqli $connection - a mysqli database connection to log to.
+     * @param string $logTable - the name of the table that will store the logs
      */
     public function __construct(\mysqli $connection, string $logTable)
     {
@@ -33,7 +33,7 @@ class MysqliLogger extends \Psr\Log\AbstractLogger
     /**
      * Logs with an arbitrary level.
      *
-     * @param int $level - the priority of the message - see LogLevel class
+     * @param string $level - the level of the logl
      * @param string $message -  the message of the error, e.g "failed to connect to db"
      * @param array $context - name value pairs providing context to error, e.g. "dbname => "yolo")
      *
@@ -41,33 +41,31 @@ class MysqliLogger extends \Psr\Log\AbstractLogger
      */
     public function log($level, $message, array $context = array())
     {
-        if ($level >= $this->m_minLogLevel)
+        $this->validateLogLevel($level);
+        $db = $this->getConnection();
+        $json_context_string = json_encode($context, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
+        $params = array(
+            'message'  => $message,
+            'priority' => $level,
+            'context'  => $json_context_string
+        );
+
+        $query = "INSERT INTO `" . $this->m_logTable . "` SET " .
+                \iRAP\CoreLibs\MysqliLib::generateQueryPairs($params, $db);
+
+        $result = $db->query($query);
+
+        if ($result === FALSE)
         {
-            $mysqli_conn = $this->getConnection();
-            $json_context_string = json_encode($context, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+            $err_msg =
+                'Failed to insert log into database: ' . $db->error . PHP_EOL .
+                'Query: ' . $query . PHP_EOL;
 
-            $params = array(
-                'message'  => $message,
-                'priority' => $level,
-                'context'  => $json_context_string
-            );
+            # Output to the terminal aswell
+            print PHP_EOL . $err_msg . PHP_EOL;
 
-            $query = "INSERT INTO `" . $this->m_logTable . "` SET " .
-                    \iRAP\CoreLibs\MysqliLib::generateQueryPairs($params, $mysqli_conn);
-
-            $result = $mysqli_conn->query($query);
-
-            if ($result === FALSE)
-            {
-                $err_msg =
-                    'Failed to insert log into database: ' . $mysqli_conn->error . PHP_EOL .
-                    'Query: ' . $query . PHP_EOL;
-
-                # Output to the terminal aswell
-                print PHP_EOL . $err_msg . PHP_EOL;
-
-                throw new \Exception($err_msg);
-            }
+            throw new \Exception($err_msg);
         }
     }
 
