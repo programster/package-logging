@@ -23,7 +23,7 @@ class MysqliLogger extends \Psr\Log\AbstractLogger
      * @param type $table - the name of the table that will store the logs
      * @return void - (constructor)
      */
-    public function __construct(\mysqli $connection, $logTable)
+    public function __construct(\mysqli $connection, string $logTable)
     {
         $this->m_connection = $connection;
         $this->m_logTable = $logTable;
@@ -77,7 +77,7 @@ class MysqliLogger extends \Psr\Log\AbstractLogger
      * @param connectionName - the name of the connection we wish to close off.
      * @return void
      */
-    public function closeConnection()
+    public function closeConnection() : void
     {
         if ($this->m_connection !== null)
         {
@@ -91,7 +91,7 @@ class MysqliLogger extends \Psr\Log\AbstractLogger
      * that will automatically reconnect if you are NOT using the mysqlnd package.
      * @return boolean - true if connected, false if not.
      */
-    public function isConnected()
+    public function isConnected() : bool
     {
         return mysqli_ping($this->m_connection);
     }
@@ -101,5 +101,5 @@ class MysqliLogger extends \Psr\Log\AbstractLogger
      * Gets the mysqli connection that the databaselogger is using
      * @return \mysqli
      */
-    public function getConnection() { return $this->m_connection; }
+    public function getConnection() : \mysqli { return $this->m_connection; }
 }
