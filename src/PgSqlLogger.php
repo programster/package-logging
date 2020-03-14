@@ -28,6 +28,46 @@ class PgSqlLogger extends \Psr\Log\AbstractLogger
     }
 
 
+    private function checkIfLogsTableExists()
+    {
+        $query = "SELECT EXISTS(
+            SELECT *
+            FROM information_schema.tables
+            WHERE
+              table_schema = 'company3' AND
+              table_name = ''
+        )";
+    }
+
+
+    private function createLogsTable()
+    {
+        $createQuery =
+            "CREATE TABLE " . $this->m_logTable . " (
+                uuid UUID NOT NULL,
+                message TEXT NOT NULL,
+                context JSON NOT NULL,
+                created_at INT NOT NULL,
+                PRIMARY KEY (uuid)
+            )";
+
+        $createResult = pg_query($this->m_connection, $createQuery);
+
+        if ($createResult === FALSE)
+        {
+            throw new \Exception("Failed to create the logs table.");
+        }
+
+        $indexQuery = "CREATE INDEX ON " . $this->m_logTable . ' ("created_at")';
+        $indexResult = pg_query($this->m_connection, $indexQuery);
+
+        if ($indexResult === FALSE)
+        {
+            throw new \Exception("Failed to create index on logging table.");
+        }
+    }
+
+
     /**
      * Logs with an arbitrary level.
      *
