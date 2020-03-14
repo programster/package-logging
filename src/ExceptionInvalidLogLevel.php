@@ -7,7 +7,7 @@
 declare(strict_types = 1);
 namespace Programster\Log;
 
-class ExceptionInvalidLogLevel extends \Exception
+final class ExceptionInvalidLogLevel extends \Exception
 {
 
 }

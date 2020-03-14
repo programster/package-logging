@@ -8,7 +8,7 @@ declare(strict_types = 1);
 namespace Programster\Log;
 
 
-class EmailSubscriber
+final class EmailSubscriber
 {
     private $m_name;
     private $m_email;

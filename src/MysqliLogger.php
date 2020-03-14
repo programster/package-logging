@@ -12,7 +12,7 @@ declare(strict_types = 1);
 namespace Programster\Log;
 
 
-class MysqliLogger extends AbstractLogger
+final class MysqliLogger extends AbstractLogger
 {
     protected $m_connection;
     protected $m_logTable;

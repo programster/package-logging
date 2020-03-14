@@ -9,7 +9,7 @@ declare(strict_types = 1);
 namespace Programster\Log;
 
 
-class EmailLogger extends AbstractLogger
+final class EmailLogger extends AbstractLogger
 {
     private $m_emailer;
     private $m_subscribers;

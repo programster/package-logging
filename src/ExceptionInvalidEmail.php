@@ -7,7 +7,7 @@
 declare(strict_types = 1);
 namespace Programster\Log;
 
-class ExceptionInvalidEmail extends \Programster\Log\ExceptionInvalidLogLevel
+final class ExceptionInvalidEmail extends \Programster\Log\ExceptionInvalidLogLevel
 {
 
 }

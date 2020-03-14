@@ -12,7 +12,7 @@ declare(strict_types = 1);
 namespace Programster\Log;
 
 
-class PgSqlLogger extends AbstractLogger
+final class PgSqlLogger extends AbstractLogger
 {
     protected $m_connection;
     protected $m_logTable;
