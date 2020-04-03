@@ -25,8 +25,7 @@ final class MinLevelLogger Extends AbstractLogger
      */
     public function __construct(int $threshold, \Psr\Log\LoggerInterface $logger)
     {
-        $this->validateLogLevel($logLevelThreshold);
-        $this->m_threshold = $logLevelThreshold;
+        $this->m_threshold = $threshold;
         $this->m_subLogger = $logger;
     }
 
