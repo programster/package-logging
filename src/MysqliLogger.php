@@ -52,7 +52,7 @@ final class MysqliLogger extends AbstractLogger
         );
 
         $query = "INSERT INTO `" . $this->m_logTable . "` SET " .
-                \iRAP\CoreLibs\MysqliLib::generateQueryPairs($params, $db);
+                \Programster\MysqliLib\MysqliLib::generateQueryPairs($params, $db);
 
         $result = $db->query($query);
 

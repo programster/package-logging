@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "71f753b45f19e3620a1a8e6820c8a96d",
+    "content-hash": "21a69573b9a917bfdb847023d569326f",
     "packages": [
         {
             "name": "irap/emailers",
@@ -162,6 +162,53 @@
                 }
             ],
             "time": "2020-05-27T12:24:03+00:00"
+        },
+        {
+            "name": "programster/mysqli-lib",
+            "version": "1.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/programster/package-mysqli-lib.git",
+                "reference": "a0531181def591e7c62b2eb3fe97d4a447202aae"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/programster/package-mysqli-lib/zipball/a0531181def591e7c62b2eb3fe97d4a447202aae",
+                "reference": "a0531181def591e7c62b2eb3fe97d4a447202aae",
+                "shasum": ""
+            },
+            "require": {
+                "ext-mysqli": "*",
+                "php": ">=7.2.0"
+            },
+            "require-dev": {
+                "programster/core-libs": "1.7.*"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Programster\\MysqliLib\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Stuart Page",
+                    "email": "sdpagent@gamail.com",
+                    "homepage": "https://blog.programster.org",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Library for helping out with MySQL databases.",
+            "homepage": "https://github.com/programster/package-mysqli-lib",
+            "keywords": [
+                "library",
+                "mysql"
+            ],
+            "time": "2020-02-24T18:06:18+00:00"
         },
         {
             "name": "psr/log",
