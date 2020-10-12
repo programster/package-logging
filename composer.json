@@ -13,7 +13,7 @@
     "require": {
         "php": ">=7.2.0",
         "psr/log": "^1.1",
-        "ramsey/uuid": "^3.8",
+        "ramsey/uuid": "~4.1",
         "irap/emailers": "^2.0",
         "programster/mysqli-lib": "^1.0"
     },
