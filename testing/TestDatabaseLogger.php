@@ -65,3 +65,5 @@ function main()
     $logger->log(Psr\Log\LogLevel::WARNING, "This is another warning log", ['name' => 'value']);
     $logger->info("You can log with just a message and no context.");
 }
+
+main();
