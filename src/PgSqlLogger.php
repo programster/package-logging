@@ -45,23 +45,43 @@ final class PgSqlLogger extends AbstractLogger
 
     private function createLogsTable()
     {
-        $createQuery =
-            "CREATE TABLE " . $this->m_logTable . " (
+        $createTypeQuery =
+            "CREATE TYPE log_level AS ENUM ("
+            . "'debug', "
+            . "'info', "
+            . "'notice', "
+            . "'warning', "
+            . "'error', "
+            . "'critical', "
+            . "'alert', "
+            . "'emergency'"
+            . ");";
+
+        $createTypeResult = pg_query($this->m_connection, $createTypeQuery);
+
+        if ($createTypeResult === false)
+        {
+            throw new \Exception("Failed to create the log level type.");
+        }
+
+        $createLogsTableQuery =
+            "CREATE TABLE logs (
                 uuid UUID NOT NULL,
                 message TEXT NOT NULL,
+                level log_level NOT NULL,
                 context JSON NOT NULL,
                 created_at INT NOT NULL,
                 PRIMARY KEY (uuid)
             )";
 
-        $createResult = pg_query($this->m_connection, $createQuery);
+        $createResult = pg_query($this->m_connection, $createLogsTableQuery);
 
         if ($createResult === FALSE)
         {
             throw new \Exception("Failed to create the logs table.");
         }
 
-        $indexQuery = "CREATE INDEX ON " . $this->m_logTable . ' ("created_at")';
+        $indexQuery = "CREATE INDEX ON " . pg_escape_identifier($this->m_logTable) . ' ("created_at")';
         $indexResult = pg_query($this->m_connection, $indexQuery);
 
         if ($indexResult === FALSE)
@@ -90,11 +110,12 @@ final class PgSqlLogger extends AbstractLogger
             'message'  => pg_escape_string($this->m_connection, $message),
             'level' => $level,
             'context'  => pg_escape_string($this->m_connection, $contextString),
+            'created_at' => time(),
         );
 
         $query =
-            "INSERT INTO `" . $this->m_logTable . "` (uuid, message, level, context)" .
-            " VALUES ('{$params['uuid']}','{$params['message']}', '{$params['level']}', '{$params['context']}')";
+            "INSERT INTO " . pg_escape_identifier($this->m_logTable) . " (uuid, message, level, context, created_at)" .
+            " VALUES ('{$params['uuid']}','{$params['message']}', '{$params['level']}', '{$params['context']}', {$params['created_at']})";
 
         $result = pg_query($this->m_connection, $query);
 
