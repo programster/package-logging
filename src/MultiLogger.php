@@ -9,18 +9,20 @@ declare(strict_types = 1);
 namespace Programster\Log;
 
 
+use Psr\Log\LoggerInterface;
+
 final class MultiLogger extends AbstractLogger
 {
-    private $m_loggers;
+    private array $m_loggers;
 
 
-    public function __construct(\Psr\Log\LoggerInterface ...$loggers)
+    public function __construct(LoggerInterface ...$loggers)
     {
         $this->m_loggers = $loggers;
     }
 
 
-    public function log($level, $message, array $context = array())
+    public function log($level, $message, array $context = array()) : void
     {
         foreach ($this->m_loggers as $logger)
         {

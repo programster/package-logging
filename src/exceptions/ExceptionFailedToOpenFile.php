@@ -5,7 +5,8 @@
  */
 
 declare(strict_types = 1);
-namespace Programster\Log;
+namespace Programster\Log\Exceptions;
+
 
 final class ExceptionFailedToOpenFile extends \Exception
 {

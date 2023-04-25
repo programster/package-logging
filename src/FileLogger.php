@@ -8,15 +8,15 @@ declare(strict_types = 1);
 namespace Programster\Log;
 
 
+use Programster\Log\Exceptions\ExceptionFailedToOpenFile;
+
 final class FileLogger extends AbstractLogger
 {
     protected $m_fileHandle;
 
 
     /**
-     * Creates a database logger using the provided mysqli connection and table
-     * @param mysqli $connection - a mysqli database connection to log to.
-     * @param string $logTable - the name of the table that will store the logs
+     * Creates a logger that logs to a file.
      */
     public function __construct(string $filepath)
     {
@@ -38,9 +38,9 @@ final class FileLogger extends AbstractLogger
      *
      * @return void
      */
-    public function log($level, $message, array $context = array())
+    public function log($level, string|\Stringable $message, array $context = array()) : void
     {
-        $this->validateLogLevel($level);
+        $this->validateLogLevelString($level);
         $jsonContextString = json_encode($context, JSON_UNESCAPED_SLASHES);
 
         $data = array(

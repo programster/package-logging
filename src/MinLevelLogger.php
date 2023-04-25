@@ -9,10 +9,12 @@ declare(strict_types = 1);
 namespace Programster\Log;
 
 
+use Psr\Log\LoggerInterface;
+
 final class MinLevelLogger Extends AbstractLogger
 {
-    private $m_threshold;
-    private $m_subLogger;
+    private LogLevel $m_threshold;
+    private LoggerInterface $m_subLogger;
 
 
     /**
@@ -21,22 +23,23 @@ final class MinLevelLogger Extends AbstractLogger
      *                         0 = debug or higher (all).
      *                         1 = info or higher.
      *                         2 = warning or higher etc.
-     * @param \iRAP\Logging\LoggerInterface $logger
+     * @param LoggerInterface $logger
      */
-    public function __construct(int $threshold, \Psr\Log\LoggerInterface $logger)
+    public function __construct(int|LogLevel|string $threshold, LoggerInterface $logger)
     {
-        $this->m_threshold = $threshold;
+        $logLevelThresholdEnum = $this->convertLogLevelMixedVariable($threshold);
+        $this->m_threshold = $logLevelThresholdEnum;
         $this->m_subLogger = $logger;
     }
 
 
-    public function log($level, $message, array $context = array())
+    public function log($level, $message, array $context = array()) : void
     {
-        $this->validateLogLevel($level);
+        $logLevelEnum = $this->convertLogLevelMixedVariable($level);
 
-        if ($this->convertLogLevelToInteger($level) >= $this->m_threshold)
+        if ($logLevelEnum->toInt() >= $this->m_threshold->toInt())
         {
-            $this->m_subLogger->log($level, $message, $context);
+            $this->m_subLogger->log($logLevelEnum->value, $message, $context);
         }
     }
 }
