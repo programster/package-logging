@@ -1,1 +1,4 @@
 vendor
+
+# Ignore PHPStorm IDE files
+.idea
