@@ -18,3 +18,23 @@ that make use of this package.
 * [PostgreSQL Logger](https://github.com/programster/package-pgsql-logger)- log to a PostgreSQL database. 
 * [MySQL Logger](https://github.com/programster/package-mysql-logger) - log to a MySQL database.
 * [Email Logger](https://github.com/programster/package-email-logger) - send logs to any number of email addresses.
+
+
+## Install
+
+```bash
+composer require programster/log
+```
+
+## Example Usage
+
+```php
+/**
+ * Get a logger for logging all the things.
+ * @return \Psr\Log\LoggerInterface
+ */
+public function getLogger() : \Psr\Log\LoggerInterface
+{
+    return new \Programster\Log\FileLogger(filepath: "/path/to/my/logs.csv");
+}
+```
