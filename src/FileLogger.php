@@ -54,6 +54,10 @@ final class FileLogger extends AbstractLogger
             $jsonContextString
         );
 
-        fputcsv($this->m_fileHandle, $data);
+        fputcsv(
+            stream: $this->m_fileHandle,
+            fields: $data,
+            escape: "\\"
+        );
     }
 }
