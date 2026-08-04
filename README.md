@@ -7,7 +7,13 @@ abstract loggers that allow:
 * Minimum level logging (MinLevelLogger)
 * Logging to multiple loggers (MultiLogger)
 * Prefix logging - add a prefix to all messages before logging to the underlying logger.
-* File logger - log to a file.
+* CsvFileLogger - log to a CSV file.
+* JsonFileLogger - log to a JSON file.
+* File logger - wrapper that returns CsvFileLogger or JsonFileLogger depending on format specified.
+* AddedContextLogger - just as the prefix logger adds a prefix to messages in the log, this adds 
+  the provided context to the logs. Bear in mind that if you provide a context with associative 
+  keys, and that logger gets called with context that has the same key, that key/value will be 
+  overwritten.
 
 This package provides a PHP enum for the log level to simplify things. Hopefully the PSR-3 package
 will provide this itself at some point in the future.

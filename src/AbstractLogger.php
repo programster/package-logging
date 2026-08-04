@@ -61,7 +61,7 @@ abstract class AbstractLogger extends \Psr\Log\AbstractLogger
 
 
     /**
-     * Since the PSR3 interface does not specify a type on the log level, this function is responseible
+     * Since the PSR3 interface does not specify a type on the log level, this function is responsible
      * for taking that and returning a LogLevel enum that we can work with and know what the variable
      * is.
      * @param string|int|LogLevel $level
@@ -86,7 +86,7 @@ abstract class AbstractLogger extends \Psr\Log\AbstractLogger
         }
         else
         {
-            throw new ExceptionInvalidLogLevel("Unexpected log level type: " . print_r($level));
+            throw new ExceptionInvalidLogLevel("Unexpected log level type: " . print_r($level, true));
         }
     }
 }
