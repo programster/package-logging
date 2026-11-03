@@ -2,3 +2,10 @@ vendor
 
 # Ignore PHPStorm IDE files
 .idea
+
+# PHPUnit cache
+.phpunit.result.cache
+.phpunit.cache
+
+# Not committed, as this is a library. Consumers resolve their own dependency versions.
+composer.lock

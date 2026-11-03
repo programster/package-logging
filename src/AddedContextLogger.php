@@ -1,8 +1,9 @@
 <?php
 
 /*
- * A logger that just logs to all the loggers it is made up of.
- * E.g. allows you to easily log to a database and email etc.
+ * A logger that adds the provided context to every log, before passing it on to the logger it wraps.
+ * E.g. tag every log from a script with ['script' => 'import'], so you can filter by it later.
+ * Context provided at log time overrides the added context for any shared keys.
  */
 
 declare(strict_types = 1);
@@ -14,8 +15,8 @@ use Psr\Log\LoggerInterface;
 
 final class AddedContextLogger extends AbstractLogger
 {
-    private LoggerInterface $m_logger;
-    private array $m_addedContext;
+    private readonly LoggerInterface $m_logger;
+    private readonly array $m_addedContext;
 
 
     public function __construct(LoggerInterface $logger, array $context)
@@ -32,17 +33,9 @@ final class AddedContextLogger extends AbstractLogger
 
     public function log($level, $message, array $context = array()) : void
     {
-        $context = $this->m_addedContext;
-
-        if (!empty($context))
-        {
-            $context = array_merge($this->m_addedContext, $context);
-        }
-
-        foreach ($this->m_logger as $logger)
-        {
-            $logger->log($level, $message, $context);
-        }
+        // Context provided at log time overrides the added context for any shared keys.
+        $mergedContext = array_merge($this->m_addedContext, $context);
+        $this->m_logger->log($level, $message, $mergedContext);
     }
 }
 

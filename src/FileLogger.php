@@ -13,7 +13,7 @@ use Psr\Log\LoggerInterface;
 
 final class FileLogger extends AbstractLogger
 {
-    protected LoggerInterface $m_logger;
+    private readonly LoggerInterface $m_logger;
 
 
     /**

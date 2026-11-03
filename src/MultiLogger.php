@@ -13,7 +13,8 @@ use Psr\Log\LoggerInterface;
 
 final class MultiLogger extends AbstractLogger
 {
-    private array $m_loggers;
+    /** @var LoggerInterface[] */
+    private readonly array $m_loggers;
 
 
     public function __construct(LoggerInterface ...$loggers)

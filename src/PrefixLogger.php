@@ -12,8 +12,8 @@ use Psr\Log\LoggerInterface;
 
 final class PrefixLogger extends AbstractLogger
 {
-    private string $m_prefix;
-    private LoggerInterface $m_subLogger;
+    private readonly string $m_prefix;
+    private readonly LoggerInterface $m_subLogger;
 
 
     /**

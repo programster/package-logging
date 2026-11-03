@@ -13,17 +13,25 @@ use Psr\Log\LoggerInterface;
 
 final class MinLevelLogger Extends AbstractLogger
 {
-    private LogLevel $m_threshold;
-    private LoggerInterface $m_subLogger;
+    private readonly LogLevel $m_threshold;
+    private readonly LoggerInterface $m_subLogger;
 
 
     /**
      * Create the MinLevelLogger.
-     * @param int $threshold - the threshold to pass. E.g.
+     * @param int|LogLevel|string $threshold - the minimum level to pass through, as a LogLevel enum, a
+     *                         PSR-3 level string (e.g. "warning"), or an integer:
      *                         0 = debug or higher (all).
      *                         1 = info or higher.
-     *                         2 = warning or higher etc.
+     *                         2 = notice or higher.
+     *                         3 = warning or higher.
+     *                         4 = error or higher.
+     *                         5 = critical or higher.
+     *                         6 = alert or higher.
+     *                         7 = emergency only.
+     *                         Note that this is the reverse of syslog/RFC 5424 numbering.
      * @param LoggerInterface $logger
+     * @throws \Programster\Log\Exceptions\ExceptionInvalidLogLevel - if the threshold is not a valid level.
      */
     public function __construct(int|LogLevel|string $threshold, LoggerInterface $logger)
     {

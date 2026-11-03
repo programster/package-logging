@@ -6,6 +6,9 @@ abstract loggers that allow:
 
 * Minimum level logging (MinLevelLogger)
 * Logging to multiple loggers (MultiLogger)
+* Failover logging (FailoverLogger) - tries each logger in order until one succeeds, then also logs
+  to that logger the exceptions thrown by any loggers that failed before it. An optional
+  `InterfaceFailureHandler` can be provided, which is notified whenever any of the loggers fail.
 * Prefix logging - add a prefix to all messages before logging to the underlying logger.
 * CsvFileLogger - log to a CSV file.
 * JsonFileLogger - log to a JSON file.
@@ -32,6 +35,13 @@ that make use of this package.
 composer require programster/log
 ```
 
+## Running Tests
+
+```bash
+composer install
+composer test
+```
+
 ## Example Usage
 
 ```php
@@ -44,3 +54,49 @@ public function getLogger() : \Psr\Log\LoggerInterface
     return new \Programster\Log\FileLogger(filepath: "/path/to/my/logs.csv");
 }
 ```
+
+### Failover Logging
+
+Try logging to a primary logger, and fall back to the next logger(s) if it throws. The optional
+third parameter is a failure handler that is notified whenever any of the loggers fail. An
+anonymous class is a quick way to create one:
+
+```php
+/**
+ * Get a logger that logs to a JSON file, but falls back to a CSV file if that fails.
+ * @return \Psr\Log\LoggerInterface
+ */
+public function getLogger() : \Psr\Log\LoggerInterface
+{
+    $failureHandler = new class implements \Programster\Log\Interfaces\InterfaceFailureHandler {
+        public function handleFailures(array $failures, bool $messageWasLogged) : void
+        {
+            echo count($failures) . " logger(s) failed. Message was logged: " . ($messageWasLogged ? "yes" : "no") . PHP_EOL;
+
+            foreach ($failures as $failure)
+            {
+                echo " - " . $failure->getMessage() . PHP_EOL;
+            }
+        }
+    };
+
+    return new \Programster\Log\FailoverLogger(
+        new \Programster\Log\JsonFileLogger("/path/to/my/logs.json"),
+        new \Programster\Log\CsvFileLogger("/path/to/my/backup-logs.csv"),
+        $failureHandler
+    );
+}
+```
+
+The second parameter can also be an array of loggers, which are tried in order:
+
+```php
+$logger = new \Programster\Log\FailoverLogger(
+    $primaryLogger,
+    [$firstFallbackLogger, $secondFallbackLogger],
+    $failureHandler
+);
+```
+
+If every logger fails, an `ExceptionAllLoggersFailed` is thrown, which provides the individual
+exceptions through `getFailures()`.
