@@ -1,7 +1,9 @@
 <?php
 
 /*
- * An exception thrown by the FailoverLogger when every one of its loggers failed to log a message.
+ * An exception thrown by the FailoverLogger when none of its loggers were able to log a message, because each
+ * one either failed, or was skipped for being within its retry delay. Only the loggers that were actually
+ * tried have a failure, so the list of failures is empty if every logger was skipped.
  */
 
 declare(strict_types = 1);
@@ -16,7 +18,8 @@ final class ExceptionAllLoggersFailed extends \Exception
 
     /**
      * @param string $message - the exception message.
-     * @param \Throwable[] $failures - the exceptions thrown by each logger, in the order they were tried.
+     * @param \Throwable[] $failures - the exceptions thrown by each logger that was tried, in the order they
+     * were tried. Empty if every logger was skipped.
      */
     public function __construct(string $message, array $failures)
     {

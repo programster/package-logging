@@ -15,6 +15,7 @@ use Programster\Log\CsvFileLogger;
 use Programster\Log\Exceptions\ExceptionFailedToWriteFile;
 use Programster\Log\FailoverLogger;
 use Programster\Log\JsonFileLogger;
+use Programster\Log\Tests\Doubles\FixedLoggerFactory;
 use Programster\Log\Tests\Doubles\RecordingLogger;
 use Psr\Log\LoggerInterface;
 
@@ -88,7 +89,7 @@ final class FileWriteFailureTest extends TestCase
     public function testFailoverLoggerFailsOverWhenDiskIsFull(\Closure $createLogger) : void
     {
         $fallback = new RecordingLogger();
-        $logger = new FailoverLogger($createLogger(), $fallback);
+        $logger = new FailoverLogger(new FixedLoggerFactory($createLogger()), new FixedLoggerFactory($fallback));
 
         $logger->info("hello");
 
