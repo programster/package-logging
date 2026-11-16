@@ -13,6 +13,7 @@ use Programster\Log\Exceptions\ExceptionFailedToLockFile;
 use Programster\Log\Exceptions\ExceptionFailedToOpenFile;
 use Programster\Log\Exceptions\ExceptionFailedToWriteFile;
 use Programster\Log\Exceptions\ExceptionInvalidJsonLogFile;
+use Programster\Log\Internal\ScanDirection;
 
 final class JsonFileLogger extends AbstractLogger
 {
@@ -25,9 +26,13 @@ final class JsonFileLogger extends AbstractLogger
 
     /**
      * Create a logger that logs to a JSON file.
+     *
      * @param string $filepath - the path to the file you wish to log to.
-     * @param string $timeFormat - the format you want the time in. Defaults to Y-m-d H:i:s for easy sorting and reading.
-     * @throws ExceptionFailedToOpenFile - if fails to open the file.
+     *
+     * @param string $timeFormat - the format you want the time in. Defaults to Y-m-d H:i:s for easy sorting and
+     * reading.
+     *
+     * @throws ExceptionFailedToOpenFile - if the file can't be opened (or created) for writing.
      */
     public function __construct(string $filepath, string $timeFormat="Y-m-d H:i:s")
     {
@@ -43,19 +48,25 @@ final class JsonFileLogger extends AbstractLogger
 
 
     /**
-     * @param mixed $level - the level of the log, as a LogLevel enum, a PSR-3 level string (e.g. "emergency"),
-     * or an integer from 0 (debug) to 7 (emergency). It is always written to the file as the level string.
-     * @param string|\Stringable $message - the message of the error, e.g "failed to connect to db"
-     * @param array $context - - name value pairs providing context to error, e.g. "dbname => "yolo")
+     * Add the log to the file's JSON array, as an object with the time, level, message and context.
+     *
+     * @param mixed $level - the level of the log, as a LogLevel enum, a case-insensitive PSR-3 level string (e.g.
+     * "emergency"), or an integer from 0 (debug) to 7 (emergency). It is always written as the level string.
+     *
+     * @param string|\Stringable $message - the message of the log, e.g "failed to connect to db"
+     *
+     * @param array<mixed> $context - name value pairs providing context to the log, e.g. ["dbname" => "yolo"]
+     *
      * @return void
-     * @throws \Programster\Log\Exceptions\ExceptionFailedToEncodeLog - if the log could not be JSON encoded
-     * @throws \Programster\Log\Exceptions\ExceptionFailedToLockFile
-     * @throws \Programster\Log\Exceptions\ExceptionFailedToOpenFile
-     * @throws \Programster\Log\Exceptions\ExceptionFailedToWriteFile - if writing failed, e.g. because the disk is full
-     * @throws \Programster\Log\Exceptions\ExceptionInvalidJsonLogFile - if the file has content that is not a JSON array
-     * @throws \Programster\Log\Exceptions\ExceptionInvalidLogLevel - if provided an invalid log level
+     *
+     * @throws Exceptions\ExceptionFailedToEncodeLog - if the log could not be JSON encoded
+     * @throws Exceptions\ExceptionFailedToLockFile - if an exclusive lock could not be obtained on the file
+     * @throws Exceptions\ExceptionFailedToOpenFile - if the file could not be opened
+     * @throws Exceptions\ExceptionFailedToWriteFile - if writing failed, e.g. because the disk is full
+     * @throws Exceptions\ExceptionInvalidJsonLogFile - if the file has content that is not a JSON array
+     * @throws Exceptions\ExceptionInvalidLogLevel - if provided an invalid log level
      */
-    public function log($level, string|\Stringable $message, array $context = array()) : void
+    public function log(mixed $level, string|\Stringable $message, array $context = []) : void
     {
         $logLevel = $this->convertLogLevelMixedVariable($level);
 
@@ -95,12 +106,20 @@ final class JsonFileLogger extends AbstractLogger
         {
             if (flock($fp, LOCK_EX) === false)
             {
-                throw new ExceptionFailedToLockFile("Failed to get an exclusive lock on JSON log file '{$this->m_filepath}'.");
+                $msg = "Failed to get an exclusive lock on JSON log file '{$this->m_filepath}'.";
+                throw new ExceptionFailedToLockFile($msg);
             }
 
             // Use the open handle's size, rather than filesize(), which can be stale due to PHP's stat cache.
-            $filesize = fstat($fp)['size'];
-            $lastCharPos = $this->findNonWhitespace($fp, $filesize - 1, -1);
+            $stat = fstat($fp);
+
+            if ($stat === false)
+            {
+                throw new ExceptionFailedToOpenFile("Failed to get the size of JSON log file '{$this->m_filepath}'.");
+            }
+
+            $filesize = $stat['size'];
+            $lastCharPos = $this->findNonWhitespace($fp, $filesize - 1, ScanDirection::BACKWARDS);
 
             if ($lastCharPos === -1)
             {
@@ -109,19 +128,24 @@ final class JsonFileLogger extends AbstractLogger
             }
             else
             {
-                $firstCharPos = $this->findNonWhitespace($fp, 0, 1);
+                $firstCharPos = $this->findNonWhitespace($fp, 0, ScanDirection::FORWARDS);
 
-                if ($this->readByteAt($fp, $firstCharPos) !== "[" || $this->readByteAt($fp, $lastCharPos) !== "]")
+                $isArray = (
+                       $this->readByteAt($fp, $firstCharPos) === "["
+                    && $this->readByteAt($fp, $lastCharPos) === "]"
+                );
+
+                if (!$isArray)
                 {
-                    $msg = "JSON log file '{$this->m_filepath}' does not contain a JSON array (it must start with '[' " .
-                        "and end with ']'), so it has not been modified, to avoid losing its data. Please fix or " .
-                        "move the file.";
+                    $msg = "JSON log file '{$this->m_filepath}' does not contain a JSON array (it must start with "
+                        . "'[' and end with ']'), so it has not been modified, to avoid losing its data. Please fix "
+                        . "or move the file.";
 
                     throw new ExceptionInvalidJsonLogFile($msg);
                 }
 
                 // The end of the last entry, or the opening "[" if the array is empty.
-                $lastEntryEndPos = $this->findNonWhitespace($fp, $lastCharPos - 1, -1);
+                $lastEntryEndPos = $this->findNonWhitespace($fp, $lastCharPos - 1, ScanDirection::BACKWARDS);
                 $separator = ($lastEntryEndPos === $firstCharPos) ? "\n" : ",\n";
                 $this->writeAt($fp, $lastEntryEndPos + 1, $separator . $jsonString . "\n]\n");
             }
@@ -139,7 +163,7 @@ final class JsonFileLogger extends AbstractLogger
      * The content is written before cutting off what was left after it, so that the file is only left
      * broken if the write itself fails part way through.
      * @param resource $fp - the open file handle.
-     * @param int $position - the byte position to write at.
+     * @param int<0, max> $position - the byte position to write at.
      * @param string $content - the content to write.
      * @return void
      * @throws ExceptionFailedToWriteFile - if any step fails, e.g. because the disk is full.
@@ -149,12 +173,16 @@ final class JsonFileLogger extends AbstractLogger
         $succeeded = false;
 
         // Each step only runs if the previous one succeeded.
-        $reason = $this->runCapturingFailureReason(function () use ($fp, $position, $content, &$succeeded) : void {
-            $succeeded = fseek($fp, $position) === 0
+        $write = function () use ($fp, $position, $content, &$succeeded) : void {
+            $succeeded = (
+                   fseek($fp, $position) === 0
                 && fwrite($fp, $content) === strlen($content)
                 && ftruncate($fp, $position + strlen($content))
-                && fflush($fp);
-        });
+                && fflush($fp)
+            );
+        };
+
+        $reason = $this->runCapturingFailureReason($write);
 
         if ($succeeded === false)
         {
@@ -167,10 +195,10 @@ final class JsonFileLogger extends AbstractLogger
      * Find the position of the first non-whitespace byte, scanning from a position in a given direction.
      * @param resource $fp - the open file handle.
      * @param int $start - the byte position to start scanning from.
-     * @param int $step - 1 to scan forwards, or -1 to scan backwards.
-     * @return int - the position found, or -1 if the start or end of the file was reached first.
+     * @param ScanDirection $direction - which way to scan.
+     * @return int<-1, max> - the position found, or -1 if the start or end of the file was reached first.
      */
-    private function findNonWhitespace($fp, int $start, int $step) : int
+    private function findNonWhitespace($fp, int $start, ScanDirection $direction) : int
     {
         $result = -1;
         $position = $start;
@@ -189,7 +217,7 @@ final class JsonFileLogger extends AbstractLogger
                 $result = $position;
             }
 
-            $position += $step;
+            $position += $direction->getStep();
         }
 
         return $result;

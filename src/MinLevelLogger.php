@@ -1,8 +1,8 @@
 <?php
 
 /*
- * A logger that only logs if the minimum threshold is met.
- * This is useful for if one wants to filter out all debuglogs etc.
+ * A logger that only passes on logs that are at or above a minimum level.
+ * This is useful for if one wants to filter out all debug logs etc.
  */
 
 declare(strict_types = 1);
@@ -11,43 +11,45 @@ namespace Programster\Log;
 
 use Psr\Log\LoggerInterface;
 
-final class MinLevelLogger Extends AbstractLogger
+final class MinLevelLogger extends AbstractLogger
 {
     private readonly LogLevel $m_threshold;
     private readonly LoggerInterface $m_subLogger;
 
 
     /**
-     * Create the MinLevelLogger.
-     * @param int|LogLevel|string $threshold - the minimum level to pass through, as a LogLevel enum, a
-     *                         PSR-3 level string (e.g. "warning"), or an integer:
-     *                         0 = debug or higher (all).
-     *                         1 = info or higher.
-     *                         2 = notice or higher.
-     *                         3 = warning or higher.
-     *                         4 = error or higher.
-     *                         5 = critical or higher.
-     *                         6 = alert or higher.
-     *                         7 = emergency only.
-     *                         Note that this is the reverse of syslog/RFC 5424 numbering.
-     * @param LoggerInterface $logger
-     * @throws \Programster\Log\Exceptions\ExceptionInvalidLogLevel - if the threshold is not a valid level.
+     * Create a logger that only passes on logs that are at or above a minimum level.
+     * @param LogLevel $threshold - the minimum level to pass on, e.g. LogLevel::WARNING for warning or higher.
+     * @param LoggerInterface $logger - the logger to pass the logs on to.
      */
-    public function __construct(int|LogLevel|string $threshold, LoggerInterface $logger)
+    public function __construct(LogLevel $threshold, LoggerInterface $logger)
     {
-        $logLevelThresholdEnum = $this->convertLogLevelMixedVariable($threshold);
-        $this->m_threshold = $logLevelThresholdEnum;
+        $this->m_threshold = $threshold;
         $this->m_subLogger = $logger;
     }
 
 
-    public function log($level, $message, array $context = array()) : void
+    /**
+     * Pass the log on to the logger, if its level is at or above the threshold.
+     *
+     * @param mixed $level - the level of the log, as a LogLevel enum, a case-insensitive PSR-3 level string (e.g.
+     * "emergency"), or an integer from 0 (debug) to 7 (emergency). It is passed on as the level string.
+     *
+     * @param string|\Stringable $message - the message of the log.
+     *
+     * @param array<mixed> $context - name value pairs providing context to the log.
+     *
+     * @return void
+     *
+     * @throws Exceptions\ExceptionInvalidLogLevel - if the level is invalid.
+     */
+    public function log(mixed $level, string|\Stringable $message, array $context = []) : void
     {
-        $logLevelEnum = $this->convertLogLevelMixedVariable($level);
+        $logLevel = $this->convertLogLevelMixedVariable($level);
 
-        if ($logLevelEnum->toInt() >= $this->m_threshold->toInt())
+        if ($logLevel->toInt() >= $this->m_threshold->toInt())
         {
-            $this->m_subLogger->log($logLevelEnum->value, $message, $context);
+            $this->m_subLogger->log($logLevel->value, $message, $context);
         }
     }
 }

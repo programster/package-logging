@@ -17,10 +17,10 @@ final class PrefixLogger extends AbstractLogger
 
 
     /**
-     * Create a prefix logger that will prefix the message with anything  you specify. This can be useful for
-     * adding the service name to the beginning of every message before emailing etc.
+     * Create a logger that adds a prefix to every message, before passing it on to another logger. This can be
+     * useful for adding the service name to the beginning of every message before emailing etc.
      * @param string $prefix - the prefix to add to every message.
-     * @param LoggerInterface $logger - the logger to forwarde every request through.
+     * @param LoggerInterface $logger - the logger to pass every log on to.
      */
     public function __construct(string $prefix, LoggerInterface $logger)
     {
@@ -29,10 +29,15 @@ final class PrefixLogger extends AbstractLogger
     }
 
 
-    public function log($level, $message, array $context = array()) : void
+    /**
+     * Pass the log on to the logger, with the prefix added to the start of its message.
+     * @param mixed $level - the level of the log, which is passed on as it was given.
+     * @param string|\Stringable $message - the message of the log.
+     * @param array<mixed> $context - name value pairs providing context to the log.
+     * @return void
+     */
+    public function log(mixed $level, string|\Stringable $message, array $context = []) : void
     {
-        $message = $this->m_prefix . $message;
-        $this->m_subLogger->log($level, $message, $context);
+        $this->m_subLogger->log($level, $this->m_prefix . $message, $context);
     }
 }
-

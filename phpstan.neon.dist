@@ -1,0 +1,20 @@
+# PHPStan settings. Run with: vendor/bin/phpstan
+parameters:
+    level: 10
+    phpVersion:
+        min: 80200
+        max: 80599
+    paths:
+        - src
+        - testing
+    ignoreErrors:
+        # This test deliberately gives CachingLoggerFactory closures that don't declare that they return a logger (or
+        # take a parameter), to check that they're rejected when the code runs, as PHPStan can't catch every caller.
+        -
+            identifier: argument.type
+            path: testing/tests/CachingLoggerFactoryTest.php
+            count: 1
+        -
+            identifier: return.unusedType
+            path: testing/tests/CachingLoggerFactoryTest.php
+            count: 2

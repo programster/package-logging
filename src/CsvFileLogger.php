@@ -25,9 +25,13 @@ final class CsvFileLogger extends AbstractLogger
 
     /**
      * Create a logger that logs to a CSV file.
+     *
      * @param string $filepath - the path to the file you wish to log to.
-     * @param string $timeFormat - the format you want the time in. Defaults to Y-m-d H:i:s for easy sorting and reading.
-     * @throws ExceptionFailedToOpenFile - if fails to open the file.
+     *
+     * @param string $timeFormat - the format you want the time in. Defaults to Y-m-d H:i:s for easy sorting and
+     * reading.
+     *
+     * @throws ExceptionFailedToOpenFile - if the file can't be opened (or created) for writing.
      */
     public function __construct(string $filepath, string $timeFormat="Y-m-d H:i:s")
     {
@@ -42,28 +46,34 @@ final class CsvFileLogger extends AbstractLogger
 
 
     /**
-     * @param mixed $level - the level of the log, as a LogLevel enum, a PSR-3 level string (e.g. "emergency"),
-     * or an integer from 0 (debug) to 7 (emergency). It is always written to the file as the level string.
-     * @param string|\Stringable $message - the message of the error, e.g "failed to connect to db"
-     * @param array $context - - name value pairs providing context to error, e.g. "dbname => "yolo")
+     * Write the log to the file, as a row of the time, level, message and JSON encoded context.
+     *
+     * @param mixed $level - the level of the log, as a LogLevel enum, a case-insensitive PSR-3 level string (e.g.
+     * "emergency"), or an integer from 0 (debug) to 7 (emergency). It is always written as the level string.
+     *
+     * @param string|\Stringable $message - the message of the log, e.g "failed to connect to db"
+     *
+     * @param array<mixed> $context - name value pairs providing context to the log, e.g. ["dbname" => "yolo"]
+     *
      * @return void
+     *
      * @throws Exceptions\ExceptionFailedToEncodeLog - if the context could not be JSON encoded
      * @throws Exceptions\ExceptionFailedToLockFile - if an exclusive lock could not be obtained on the file
      * @throws Exceptions\ExceptionFailedToOpenFile - if the file could not be opened
      * @throws Exceptions\ExceptionFailedToWriteFile - if writing failed, e.g. because the disk is full
      * @throws Exceptions\ExceptionInvalidLogLevel - if provided an invalid log level
      */
-    public function log($level, string|\Stringable $message, array $context = array()) : void
+    public function log(mixed $level, string|\Stringable $message, array $context = []) : void
     {
         $logLevel = $this->convertLogLevelMixedVariable($level);
         $jsonContextString = $this->encodeJson($context, $message);
 
-        $data = array(
+        $data = [
             date($this->m_dateFormat, time()),
             $logLevel->value,
             (string)$message,
-            $jsonContextString
-        );
+            $jsonContextString,
+        ];
 
         // "a" creates the file if it is missing (e.g. after log rotation), and always writes at the end.
         $fp = $this->openFile($this->m_filepath, "a", "CSV log file");
@@ -72,7 +82,8 @@ final class CsvFileLogger extends AbstractLogger
         {
             if (flock($fp, LOCK_EX) === false)
             {
-                throw new ExceptionFailedToLockFile("Failed to get an exclusive lock on CSV log file '{$this->m_filepath}'.");
+                $msg = "Failed to get an exclusive lock on CSV log file '{$this->m_filepath}'.";
+                throw new ExceptionFailedToLockFile($msg);
             }
 
             $this->writeRow($fp, $data);
@@ -88,7 +99,7 @@ final class CsvFileLogger extends AbstractLogger
     /**
      * Write a row to the CSV file.
      * @param resource $fp - the open, locked file handle.
-     * @param array $data - the fields of the row.
+     * @param list<string> $data - the fields of the row.
      * @return void
      * @throws ExceptionFailedToWriteFile - if writing failed, e.g. because the disk is full.
      */
@@ -96,13 +107,11 @@ final class CsvFileLogger extends AbstractLogger
     {
         $bytesWritten = false;
 
-        $reason = $this->runCapturingFailureReason(function () use ($fp, $data, &$bytesWritten) : void {
-            $bytesWritten = fputcsv(
-                stream: $fp,
-                fields: $data,
-                escape: "\\"
-            );
-        });
+        $writeRow = function () use ($fp, $data, &$bytesWritten) : void {
+            $bytesWritten = fputcsv(stream: $fp, fields: $data, escape: "\\");
+        };
+
+        $reason = $this->runCapturingFailureReason($writeRow);
 
         if ($bytesWritten === false)
         {
