@@ -39,8 +39,10 @@ final class JsonFileLogger extends AbstractLogger
         $this->m_filepath = $filepath;
         $this->m_dateFormat = $timeFormat;
 
-        // use 'a' to check we can write and try to create file if doesn't already exist.
-        $fileHandle = $this->openFile($this->m_filepath, "a", "JSON log file");
+        // Open the file in the same mode as each log does (reading and writing, creating it if need be), so that a
+        // file that can't be logged to (e.g. it can be written to but not read) is reported straight away, rather
+        // than on every log.
+        $fileHandle = $this->openFile($this->m_filepath, "c+b", "JSON log file");
 
         // immediately close the file. We only did it to check we had permissions.
         fclose($fileHandle);

@@ -539,6 +539,100 @@ $smoke->run(
     $inTempDirectory($testJsonDirectoryRemoved)
 );
 
+$testContextObjects = function (string $dir) use ($readJsonLogs, $readCsvRows) : void {
+    $previous = new \LogicException("bad config", 7);
+    $exception = new \RuntimeException("db down", 3, $previous);
+
+    $stringable = new class implements \Stringable {
+        public string $notTheString = "property";
+
+        public function __toString() : string
+        {
+            return "the string";
+        }
+    };
+
+    $jsonSerializable = new class implements \Stringable, \JsonSerializable {
+        public function __toString() : string
+        {
+            return "not used";
+        }
+
+        public function jsonSerialize() : mixed
+        {
+            return ['serialized' => true];
+        }
+    };
+
+    $context = [
+        'exception' => $exception,
+        'stringable' => $stringable,
+        'json_serializable' => $jsonSerializable,
+        'nested' => ['exception' => $previous],
+    ];
+
+    $jsonPath = "{$dir}/logs.json";
+    (new JsonFileLogger($jsonPath))->error("Failed", $context);
+    $logs = $readJsonLogs($jsonPath);
+    $jsonContext = is_array($logs[0]) ? $logs[0]['context'] : null;
+
+    $csvPath = "{$dir}/logs.csv";
+    (new CsvFileLogger($csvPath))->error("Failed", $context);
+    $csvContext = json_decode((string)$readCsvRows($csvPath)[0][3], true, 512, JSON_THROW_ON_ERROR);
+
+    foreach (['JSON' => $jsonContext, 'CSV' => $csvContext] as $format => $written)
+    {
+        if (!is_array($written) || !is_array($written['exception']) || !is_array($written['nested']))
+        {
+            throw new \RuntimeException("The {$format} context wasn't written as an array.");
+        }
+
+        $writtenException = $written['exception'];
+        SmokeTest::assertSame(\RuntimeException::class, $writtenException['class'], "{$format}: the class");
+        SmokeTest::assertSame("db down", $writtenException['message'], "{$format}: the message");
+        SmokeTest::assertSame(3, $writtenException['code'], "{$format}: the code");
+        SmokeTest::assertSame(__FILE__, $writtenException['file'], "{$format}: the file");
+        SmokeTest::assertSame(true, is_int($writtenException['line']), "{$format}: whether the line is an int");
+        SmokeTest::assertSame(true, is_string($writtenException['trace']), "{$format}: whether there's a trace");
+        $writtenPrevious = is_array($writtenException['previous']) ? $writtenException['previous'] : [];
+        SmokeTest::assertSame("bad config", $writtenPrevious['message'] ?? null, "{$format}: the previous exception");
+        $hasNoPrevious = (array_key_exists('previous', $writtenPrevious) && $writtenPrevious['previous'] === null);
+        SmokeTest::assertSame(true, $hasNoPrevious, "{$format}: whether the previous's previous is null");
+        SmokeTest::assertSame("the string", $written['stringable'], "{$format}: the Stringable");
+        SmokeTest::assertSame(['serialized' => true], $written['json_serializable'], "{$format}: the JsonSerializable");
+        $nested = is_array($written['nested']['exception']) ? $written['nested']['exception'] : [];
+        SmokeTest::assertSame("bad config", $nested['message'] ?? null, "{$format}: a nested exception");
+    }
+};
+
+$smoke->run(
+    "file loggers: write an exception in the context, a Stringable as its string, and a JsonSerializable as it says",
+    $inTempDirectory($testContextObjects)
+);
+
+$testUnreadableJsonFile = function (string $dir) : void {
+    $filepath = "{$dir}/write-only.json";
+    touch($filepath);
+    chmod($filepath, 0200);
+
+    // Root can read any file, so this can only be tested when not running as root.
+    if (!is_readable($filepath))
+    {
+        $createLogger = function () use ($filepath) : void {
+            new JsonFileLogger($filepath);
+        };
+
+        $exception = SmokeTest::catchException(ExceptionFailedToOpenFile::class, $createLogger);
+        $hasReason = str_contains($exception->getMessage(), "Permission denied");
+        SmokeTest::assertSame(true, $hasReason, "whether the reason is given: {$exception->getMessage()}");
+    }
+};
+
+$smoke->run(
+    "JsonFileLogger: a file that can be written to but not read is rejected when the logger is created",
+    $inTempDirectory($testUnreadableJsonFile)
+);
+
 $testFileLogger = function (string $dir) use ($readCsvRows, $readJsonLogs) : void {
     $csvPath = "{$dir}/logs.csv";
     $csvLogger = new FileLogger($csvPath);

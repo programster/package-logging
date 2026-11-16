@@ -119,9 +119,11 @@ abstract class AbstractLogger extends \Psr\Log\AbstractLogger
 
     /**
      * JSON encode data for a log. Invalid UTF-8 bytes are replaced with the Unicode replacement character (U+FFFD),
-     * so that a log is not lost just because it contains some bad bytes. Anything else that cannot be encoded (e.g.
-     * INF/NAN, resources, recursive arrays) results in an exception, rather than a log with missing or misleading
-     * data.
+     * so that a log is not lost just because it contains some bad bytes. Objects that json_encode() would otherwise
+     * write as their public properties are converted first (see convertForEncoding()), e.g. an exception in the
+     * context's "exception" key, as PSR-3 recommends, which would otherwise be written as {}. Anything else that
+     * cannot be encoded (e.g. INF/NAN, resources, recursive arrays) results in an exception, rather than a log with
+     * missing or misleading data.
      *
      * @param array<mixed> $data - the data to encode.
      *
@@ -135,7 +137,8 @@ abstract class AbstractLogger extends \Psr\Log\AbstractLogger
     {
         try
         {
-            $json = json_encode($data, JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR);
+            $flags = JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR;
+            $json = json_encode(self::convertForEncoding($data, 0), $flags);
         }
         catch (\JsonException $exception)
         {
@@ -144,5 +147,63 @@ abstract class AbstractLogger extends \Psr\Log\AbstractLogger
         }
 
         return $json;
+    }
+
+
+    /**
+     * Convert a value that's about to be JSON encoded, so that objects which json_encode() would write as just their
+     * public properties keep what matters about them:
+     * - an exception (any \Throwable) becomes its class, message, code, file, line, trace and previous exception.
+     * - a \Stringable becomes its string, unless it's \JsonSerializable, as that says how it should be encoded.
+     * Arrays are converted element by element. Anything else is left as it is.
+     *
+     * @param mixed $value - the value to convert.
+     *
+     * @param int $depth - how deeply nested the value is. Past json_encode()'s own limit, values are left as they are
+     * (and json_encode() then rejects them), so that a recursive array can't recurse forever.
+     *
+     * @return mixed - the converted value.
+     */
+    private static function convertForEncoding(mixed $value, int $depth) : mixed
+    {
+        $maxDepth = 512;
+
+        if ($depth > $maxDepth)
+        {
+            $result = $value;
+        }
+        elseif ($value instanceof \Throwable)
+        {
+            $previous = $value->getPrevious();
+
+            $result = [
+                'class' => get_class($value),
+                'message' => $value->getMessage(),
+                'code' => $value->getCode(),
+                'file' => $value->getFile(),
+                'line' => $value->getLine(),
+                'trace' => $value->getTraceAsString(),
+                'previous' => ($previous === null) ? null : self::convertForEncoding($previous, $depth + 1),
+            ];
+        }
+        elseif ($value instanceof \Stringable && !($value instanceof \JsonSerializable))
+        {
+            $result = (string)$value;
+        }
+        elseif (is_array($value))
+        {
+            $result = [];
+
+            foreach ($value as $key => $element)
+            {
+                $result[$key] = self::convertForEncoding($element, $depth + 1);
+            }
+        }
+        else
+        {
+            $result = $value;
+        }
+
+        return $result;
     }
 }

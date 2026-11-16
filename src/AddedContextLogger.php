@@ -48,7 +48,8 @@ final class AddedContextLogger extends AbstractLogger
      */
     public function log(mixed $level, string|\Stringable $message, array $context = []) : void
     {
-        $mergedContext = array_merge($this->m_addedContext, $context);
+        // array_replace() rather than array_merge(), which would add to integer keys rather than replacing them.
+        $mergedContext = array_replace($this->m_addedContext, $context);
         $this->m_logger->log($level, $message, $mergedContext);
     }
 }

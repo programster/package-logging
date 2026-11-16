@@ -70,6 +70,21 @@ A log that can't be written throws, rather than being lost silently:
 - `ExceptionFailedToEncodeLog` if the context can't be encoded as JSON, e.g. it holds `NAN`. Bad UTF-8 is replaced
   with the Unicode replacement character (U+FFFD) instead, rather than losing the whole log.
 
+Objects in the context that JSON would write as just their public properties are converted first, so nothing that
+matters about them is lost:
+
+- An exception, e.g. in the `exception` key as PSR-3 recommends, is written as its class, message, code, file, line,
+  trace and previous exception (written the same way, or `null`).
+- A `Stringable` is written as its string, unless it's also `JsonSerializable`, as that says how it should be written.
+
+```php
+$logger = new JsonFileLogger("exceptions.json");
+$logger->error("Payment failed", ['exception' => new \RuntimeException("Card declined")]);
+
+$logs = json_decode(file_get_contents("exceptions.json"), true);
+assert($logs[0]['context']['exception']['message'] === "Card declined");
+```
+
 ## JsonFileLogger
 Logs to a file holding a JSON array, with an object per log, so the file can always be read as JSON:
 
@@ -86,7 +101,9 @@ assert(array_keys($logs[0]) === ['when', 'level', 'message', 'context']);
 Each log is added to the end of the array in place, without rewriting the file, and works with a JSON array in any
 formatting (e.g. pretty printed, or all on one line). A file that isn't a JSON array is never changed, to avoid losing
 what's in it: logging to it throws an `ExceptionInvalidJsonLogFile` instead. Like the `CsvFileLogger`, it copes with
-the file being rotated, and throws rather than losing a log it can't write.
+the file being rotated, converts objects in the context, and throws rather than losing a log it can't write. A file
+that can be written to but not read can't be logged to, as each log reads the end of the array, so it's rejected when
+the logger is created.
 
 ## FileLogger
 Logs to a file as CSV (the default) or JSON, using a `CsvFileLogger` or `JsonFileLogger`:

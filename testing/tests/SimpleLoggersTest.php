@@ -85,6 +85,17 @@ $smoke->run(
     $testAddedContext
 );
 
+$testAddedContextIntegerKeys = function () : void {
+    $wrappedLogger = new RecordingLogger();
+    $logger = new AddedContextLogger($wrappedLogger, ['added', 'script' => 'import']);
+    $logger->info("hello", ['given']);
+
+    $expected = ['given', 'script' => 'import'];
+    SmokeTest::assertSame($expected, $wrappedLogger->getLogs()[0]['context'], "the context");
+};
+
+$smoke->run("AddedContextLogger: the log's own context overrides integer keys too", $testAddedContextIntegerKeys);
+
 $testEmptyAddedContext = function () : void {
     $createLogger = function () : void {
         new AddedContextLogger(new RecordingLogger(), []);

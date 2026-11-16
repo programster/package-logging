@@ -68,6 +68,15 @@ constructors.
   `log`), and the factory's class in `failed_logger_factory_class`. `failed_logger_class` is `""` when the factory
   failed to provide a logger.
 
+- **Exceptions and other objects in the context are written properly by the file loggers.** An exception (e.g. in the
+  `exception` key, as PSR-3 recommends) used to be written as `{}`, losing it entirely. It's now written as its class,
+  message, code, file, line, trace and previous exception. A `Stringable` that isn't `JsonSerializable` is written as
+  its string, rather than its public properties.
+- **`AddedContextLogger` lets the log's own context override integer keys too.** It used to add the log's values
+  after the added ones for integer keys, rather than replacing them.
+- **`JsonFileLogger` rejects a file it can write to but not read when it's created**, with an
+  `ExceptionFailedToOpenFile`, rather than failing on every log.
+
 ### New features
 - **`CachingLoggerFactory`** creates its logger the first time it's needed, and keeps it, but tries again if creating
   it threw. See [Caching the logger](failover-logging.md#caching-the-logger).
