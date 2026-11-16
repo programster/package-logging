@@ -615,7 +615,8 @@ $testUnreadableJsonFile = function (string $dir) : void {
     touch($filepath);
     chmod($filepath, 0200);
 
-    // Root can read any file, so this can only be tested when not running as root.
+    // Root can read any file, so this can only be tested when not running as root. The tests run as an ordinary user
+    // in testing/run-all-php-versions.sh (and so in CI), so it's always tested there.
     if (!is_readable($filepath))
     {
         $createLogger = function () use ($filepath) : void {

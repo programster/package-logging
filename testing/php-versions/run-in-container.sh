@@ -22,7 +22,9 @@ done
 echo "lint failures: ${numLintFailures}"
 [ "$numLintFailures" -eq 0 ] || failed=1
 
-echo "=== smoke tests"
-php -d zend.assertions=1 -d assert.exception=1 /app/testing/main.php || failed=1
+# The tests run as an ordinary user rather than root, as root can read and write any file, so the tests of files the
+# loggers can't read or write could only be skipped. The tests only need to read /app, and write to /tmp.
+echo "=== smoke tests (as the user nobody)"
+su -s /bin/sh nobody -c 'php -d zend.assertions=1 -d assert.exception=1 /app/testing/main.php' || failed=1
 
 exit $failed

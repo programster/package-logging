@@ -34,7 +34,10 @@ That runs `php -d zend.assertions=1 testing/main.php`. `zend.assertions` must be
 silently do nothing, so the tests refuse to run without it. To run only the tests whose name contains some text, set
 `LOG_TEST_ONLY`, e.g. `LOG_TEST_ONLY=FailoverLogger composer test`.
 
-The full disk tests use Linux's `/dev/full`, so they're left out where it doesn't exist.
+The full disk tests use Linux's `/dev/full`, so they're left out where it doesn't exist. The test of a JSON log file
+that can be written to but not read is left out when running as root, which can read any file.
+`testing/run-all-php-versions.sh` runs the tests as an ordinary user (`nobody`) in each container, so it's always run
+there, and in CI.
 
 ## PHPStan
 ```bash
