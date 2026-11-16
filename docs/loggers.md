@@ -121,8 +121,39 @@ $logger = new MultiLogger(new FileLogger("logs.csv"), new FileLogger("logs.json"
 $logger->info("Logged to both");
 ```
 
-If one of its loggers throws, the exception is passed on, and the loggers after it aren't logged to. To keep logging
-to the others when one fails, wrap it in a [FailoverLogger](failover-logging.md).
+If one of its loggers throws, the message is still given to all the others, so one broken logger doesn't stop the
+rest from logging. Once every logger has been tried, an `ExceptionMultiLoggerFailed` is thrown, holding a
+`MultiLoggerFailure` for each logger that failed (its position, the logger and what it threw), in order:
+
+```php
+$createBrokenLogger = function () : \Psr\Log\LoggerInterface {
+    return new class extends \Psr\Log\AbstractLogger {
+        public function log($level, string|\Stringable $message, array $context = []) : void
+        {
+            throw new \RuntimeException("Connection refused");
+        }
+    };
+};
+
+$fileLogger = new JsonFileLogger("multi.json");
+$logger = new MultiLogger($createBrokenLogger(), $fileLogger);
+
+try
+{
+    $logger->error("Payment failed");
+}
+catch (ExceptionMultiLoggerFailed $exception)
+{
+    // The file logger still logged it.
+    assert(json_decode(file_get_contents("multi.json"), true)[0]['message'] === "Payment failed");
+    assert($exception->getFailures()->first()->getPosition() === 0);
+    assert($exception->didEveryLoggerFail() === false);
+}
+```
+
+The level is checked before the message is given to any logger, so an invalid level throws the
+`ExceptionInvalidLogLevel` that PSR-3 requires, rather than every logger failing. To fall back to another logger when
+one fails, rather than logging to all of them, use a [FailoverLogger](failover-logging.md).
 
 ## MinLevelLogger
 Only passes on logs at or above a level, e.g. to leave out the debug logs in production:

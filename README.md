@@ -26,7 +26,7 @@ combined:
 | `JsonFileLogger` | Logs to a file holding a JSON array. |
 | `FileLogger` | Logs to a file, as CSV (the default) or JSON. |
 | `FailoverLogger` | Tries each of its loggers in order until one works, then logs why the ones before it failed. |
-| `MultiLogger` | Logs to every one of its loggers. |
+| `MultiLogger` | Logs to every one of its loggers, and then throws if any of them failed. |
 | `MinLevelLogger` | Only passes on logs at or above a level, e.g. warnings and above. |
 | `PrefixLogger` | Adds a prefix to every message. |
 | `AddedContextLogger` | Adds context to every log, e.g. `['script' => 'import']`, so you can filter by it later. |

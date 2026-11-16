@@ -3,6 +3,9 @@
 /*
  * A logger that logs every message to all the loggers it is made up of, in order.
  * E.g. allows you to easily log to a database and email etc.
+ *
+ * If any of the loggers fail, the message is still given to all the others, and then an ExceptionMultiLoggerFailed
+ * is thrown, holding each failure, so that one broken logger doesn't stop the rest from logging.
  */
 
 declare(strict_types = 1);
@@ -10,6 +13,8 @@ namespace Programster\Log;
 
 
 use Programster\Log\Collections\LoggerCollection;
+use Programster\Log\Collections\MultiLoggerFailureCollection;
+use Programster\Log\Exceptions\ExceptionMultiLoggerFailed;
 use Psr\Log\LoggerInterface;
 
 final class MultiLogger extends AbstractLogger
@@ -30,18 +35,54 @@ final class MultiLogger extends AbstractLogger
 
 
     /**
-     * Log the message to every logger, in order. If one throws, the exception is passed on, and the loggers after it
-     * are not logged to. Use a FailoverLogger for each one that should be allowed to fail.
-     * @param mixed $level - the level of the log, which is passed on as it was given.
+     * Log the message to every logger, in order. A logger that throws doesn't stop the message being given to the
+     * loggers after it: once every logger has been tried, an exception is thrown if any of them failed.
+     *
+     * @param mixed $level - the level of the log, as a LogLevel enum, a case-insensitive PSR-3 level string (e.g.
+     * "emergency"), or an integer from 0 (debug) to 7 (emergency). It is passed on as the level string.
+     *
      * @param string|\Stringable $message - the message of the log.
+     *
      * @param array<mixed> $context - name value pairs providing context to the log.
+     *
      * @return void
+     *
+     * @throws ExceptionMultiLoggerFailed - if one or more of the loggers failed, after the rest have logged it.
+     *
+     * @throws Exceptions\ExceptionInvalidLogLevel - if the level is invalid. This is checked before giving the message
+     * to any logger, so that an invalid level is reported as the PSR-3 exception, rather than as every logger failing.
      */
     public function log(mixed $level, string|\Stringable $message, array $context = []) : void
     {
-        foreach ($this->m_loggers as $logger)
+        $levelString = $this->convertLogLevelMixedVariable($level)->value;
+        $failures = [];
+
+        foreach ($this->m_loggers as $position => $logger)
         {
-            $logger->log($level, $message, $context);
+            try
+            {
+                $logger->log($levelString, $message, $context);
+            }
+            catch (\Throwable $throwable)
+            {
+                $failures[] = new MultiLoggerFailure($position, $logger, $throwable);
+            }
+        }
+
+        if (count($failures) > 0)
+        {
+            $numFailed = count($failures);
+            $numLoggers = count($this->m_loggers);
+            $firstReason = $failures[0]->getThrowable()->getMessage();
+
+            $exceptionMessage = "{$numFailed} of {$numLoggers} loggers failed to log the message '{$message}', the "
+                . "first because: {$firstReason}";
+
+            throw new ExceptionMultiLoggerFailed(
+                $exceptionMessage,
+                new MultiLoggerFailureCollection(...$failures),
+                $numLoggers
+            );
         }
     }
 }

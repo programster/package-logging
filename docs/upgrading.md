@@ -72,6 +72,12 @@ constructors.
   `exception` key, as PSR-3 recommends) used to be written as `{}`, losing it entirely. It's now written as its class,
   message, code, file, line, trace and previous exception. A `Stringable` that isn't `JsonSerializable` is written as
   its string, rather than its public properties.
+- **`MultiLogger` logs to every logger it can, and then throws.** A logger that throws used to stop the message
+  being given to the loggers after it, and its exception was passed on as it was. Now the message is given to every
+  logger, and then an `ExceptionMultiLoggerFailed` is thrown if any failed, holding each failure. Catch that, rather
+  than the exceptions of the loggers themselves. It also now checks the level, throwing an `ExceptionInvalidLogLevel`
+  for an invalid one before logging anything, and passes it on as the PSR-3 level string, rather than as it was
+  given.
 - **`AddedContextLogger` lets the log's own context override integer keys too.** It used to add the log's values
   after the added ones for integer keys, rather than replacing them.
 - **`JsonFileLogger` rejects a file it can write to but not read when it's created**, with an

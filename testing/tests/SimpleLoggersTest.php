@@ -6,11 +6,14 @@
  */
 
 use Programster\Log\AddedContextLogger;
+use Programster\Log\Collections\MultiLoggerFailureCollection;
 use Programster\Log\Exceptions\ExceptionContextRequired;
 use Programster\Log\Exceptions\ExceptionInvalidLogLevel;
+use Programster\Log\Exceptions\ExceptionMultiLoggerFailed;
 use Programster\Log\LogLevel;
 use Programster\Log\MinLevelLogger;
 use Programster\Log\MultiLogger;
+use Programster\Log\MultiLoggerFailure;
 use Programster\Log\PrefixLogger;
 use Programster\Log\Testing\Doubles\FailingLogger;
 use Programster\Log\Testing\Doubles\RecordingLogger;
@@ -174,18 +177,90 @@ $smoke->run(
 );
 
 $testMultiLoggerFailure = function () : void {
-    $after = new RecordingLogger();
-    $logger = new MultiLogger(new FailingLogger("broken"), $after);
+    $first = new RecordingLogger();
+    $broken = new FailingLogger("broken");
+    $last = new RecordingLogger();
+    $logger = new MultiLogger($first, $broken, $last, new FailingLogger("also broken"));
 
     $logHello = function () use ($logger) : void {
         $logger->info("hello");
     };
 
-    SmokeTest::expectException(\RuntimeException::class, $logHello, "broken");
-    SmokeTest::assertSame([], $after->getLogs(), "the logs of the logger after the one that failed");
+    $exception = SmokeTest::catchException(ExceptionMultiLoggerFailed::class, $logHello);
+    SmokeTest::assertSame(["hello"], $first->getMessages(), "the messages of the logger before the broken one");
+    SmokeTest::assertSame(["hello"], $last->getMessages(), "the messages of the logger after the broken one");
+
+    $expectedMessage = "2 of 4 loggers failed to log the message 'hello', the first because: broken";
+    SmokeTest::assertSame($expectedMessage, $exception->getMessage(), "the exception's message");
+    $failures = $exception->getFailures();
+    SmokeTest::assertSame(2, count($failures), "the number of failures");
+    SmokeTest::assertSame(1, $failures->get(0)->getPosition(), "the first failure's position");
+    SmokeTest::assertSame(true, $failures->get(0)->getLogger() === $broken, "the first failure's logger");
+    SmokeTest::assertSame("broken", $failures->get(0)->getThrowable()->getMessage(), "the first failure's exception");
+    SmokeTest::assertSame(3, $failures->get(1)->getPosition(), "the second failure's position");
+    SmokeTest::assertSame(true, $exception->getPrevious() === $failures->get(0)->getThrowable(), "the previous");
+    SmokeTest::assertSame(4, $exception->getNumLoggers(), "getNumLoggers()");
+    SmokeTest::assertSame(false, $exception->didEveryLoggerFail(), "didEveryLoggerFail()");
 };
 
-$smoke->run("MultiLogger: passes on what a logger throws", $testMultiLoggerFailure);
+$smoke->run(
+    "MultiLogger: logs to every logger it can, and then throws for the ones that failed",
+    $testMultiLoggerFailure
+);
+
+$testMultiLoggerAllFail = function () : void {
+    $logger = new MultiLogger(new FailingLogger("first"), new FailingLogger("second"));
+
+    $logHello = function () use ($logger) : void {
+        $logger->info("hello");
+    };
+
+    $exception = SmokeTest::catchException(ExceptionMultiLoggerFailed::class, $logHello);
+    SmokeTest::assertSame(true, $exception->didEveryLoggerFail(), "didEveryLoggerFail()");
+    SmokeTest::assertSame(2, count($exception->getFailures()), "the number of failures");
+};
+
+$smoke->run("MultiLogger: throws when every logger fails", $testMultiLoggerAllFail);
+
+$testMultiLoggerLevels = function () : void {
+    $wrappedLogger = new RecordingLogger();
+    $logger = new MultiLogger($wrappedLogger);
+    $logger->log("WARNING", "a");
+    $logger->log(LogLevel::ERROR, "b");
+    $logger->log(7, "c");
+    $levels = array_column($wrappedLogger->getLogs(), 'level');
+    SmokeTest::assertSame(['warning', 'error', 'emergency'], $levels, "the levels passed on");
+
+    $logLoud = function () use ($logger) : void {
+        $logger->log("loud", "d");
+    };
+
+    // PSR-3 requires an InvalidArgumentException for an invalid level, rather than every logger failing.
+    $exception = SmokeTest::catchException(\Psr\Log\InvalidArgumentException::class, $logLoud);
+    SmokeTest::assertSame(ExceptionInvalidLogLevel::class, get_class($exception), "the exception's class");
+    SmokeTest::assertSame(3, count($wrappedLogger->getLogs()), "the number of logs, after the invalid level");
+};
+
+$smoke->run("MultiLogger: passes the level on as a string, and rejects an invalid one", $testMultiLoggerLevels);
+
+$testMultiLoggerExceptionChecks = function () : void {
+    $createWithNoFailures = function () : void {
+        new ExceptionMultiLoggerFailed("message", new MultiLoggerFailureCollection(), 2);
+    };
+
+    $createWithTooManyFailures = function () : void {
+        $failure = new MultiLoggerFailure(0, new RecordingLogger(), new \RuntimeException("broken"));
+        new ExceptionMultiLoggerFailed("message", new MultiLoggerFailureCollection($failure, $failure), 1);
+    };
+
+    SmokeTest::expectException(\LogicException::class, $createWithNoFailures, "at least one failure");
+    SmokeTest::expectException(\LogicException::class, $createWithTooManyFailures, "more failures");
+};
+
+$smoke->run(
+    "ExceptionMultiLoggerFailed: rejects no failures, or more failures than loggers",
+    $testMultiLoggerExceptionChecks
+);
 
 $testPrefix = function () : void {
     $wrappedLogger = new RecordingLogger();
