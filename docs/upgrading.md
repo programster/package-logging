@@ -1,11 +1,18 @@
 # Upgrading
 
+- [From 4.0.0 to 4.0.1](#from-400-to-401)
 - [From 3.0.0 to 4.0.0](#from-300-to-400)
     - [Changes you need to make](#changes-you-need-to-make)
     - [Changes in behaviour](#changes-in-behaviour)
     - [New features](#new-features)
 
 What changed in each release, and what, if anything, you need to change in your code when upgrading.
+
+## From 4.0.0 to 4.0.1
+Nothing needs to change in your code.
+
+- **Works with `programster/collections` 4.0, as well as 3.x.** 4.0 only changed maps, which this package doesn't use,
+  so an application that needs collections 4.0 for its own maps can now install this package too.
 
 ## From 3.0.0 to 4.0.0
 The `FailoverLogger` now takes logger factories rather than loggers, so that a logger that fails to be constructed

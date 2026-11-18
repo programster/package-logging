@@ -13,7 +13,7 @@
     ],
     "require": {
         "php": "^8.2",
-        "programster/collections": "^3.0",
+        "programster/collections": "^3.0 || ^4.0",
         "psr/log": "^3.0"
     },
     "require-dev": {
